@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ListTodo, Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { agileApi } from '../services/api';
 
 function AgilePage() {
@@ -183,8 +184,14 @@ function AgilePage() {
                 ))}
               </div>
             ) : result?.data ? (
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                {result.data}
+              <div className="space-y-4">
+                {result.metadata?.demoMode && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                    <span className="text-lg">⚡</span>
+                    <span>מצב דמו - חבר API Key לתוצאות מותאמות אישית</span>
+                  </div>
+                )}
+                <MarkdownRenderer content={result.data} />
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">

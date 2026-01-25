@@ -1,32 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Network, Send, Loader2, Database, Link2, Layers } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import mermaid from 'mermaid';
+import React, { useState } from 'react';
+import { Network, Send, Loader2, Database, Link2, Layers, Download, Copy } from 'lucide-react';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { architectureApi } from '../services/api';
-
-// Initialize mermaid
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'default',
-  securityLevel: 'loose'
-});
-
-function MermaidDiagram({ chart }) {
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    if (chart && containerRef.current) {
-      const id = `mermaid-${Date.now()}`;
-      mermaid.render(id, chart).then(({ svg }) => {
-        if (containerRef.current) {
-          containerRef.current.innerHTML = svg;
-        }
-      }).catch(console.error);
-    }
-  }, [chart]);
-
-  return <div ref={containerRef} className="mermaid-container" />;
-}
 
 function ArchitecturePage() {
   const [activeTab, setActiveTab] = useState('system');
@@ -94,19 +69,23 @@ function ArchitecturePage() {
     }
   };
 
-  // Extract mermaid diagrams from the result
-  const extractMermaidDiagrams = (text) => {
-    if (!text) return [];
-    const regex = /```mermaid\n([\s\S]*?)```/g;
-    const matches = [];
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      matches.push(match[1].trim());
+  const copyToClipboard = () => {
+    if (result?.data) {
+      navigator.clipboard.writeText(result.data);
     }
-    return matches;
   };
 
-  const diagrams = result?.data ? extractMermaidDiagrams(result.data) : [];
+  const downloadAsMarkdown = () => {
+    if (result?.data) {
+      const blob = new Blob([result.data], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `architecture-${formData.systemName || 'diagram'}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -325,30 +304,36 @@ function ArchitecturePage() {
         <div className="card">
           <div className="card-header">
             <h2 className="font-semibold">תרשים ומפרט</h2>
+            {result && (
+              <div className="flex gap-2">
+                <button onClick={copyToClipboard} className="btn btn-secondary text-sm py-1">
+                  <Copy className="w-4 h-4" />
+                  העתק
+                </button>
+                <button onClick={downloadAsMarkdown} className="btn btn-secondary text-sm py-1">
+                  <Download className="w-4 h-4" />
+                  הורד
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="min-h-[400px] max-h-[700px] overflow-auto space-y-4">
+          <div className="min-h-[400px] max-h-[700px] overflow-auto">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                 <Loader2 className="w-8 h-8 animate-spin mb-4" />
                 <p>מייצר תרשים ארכיטקטורה...</p>
               </div>
             ) : result ? (
-              <>
-                {/* Render Mermaid diagrams */}
-                {diagrams.length > 0 && (
-                  <div className="space-y-4">
-                    {diagrams.map((diagram, idx) => (
-                      <MermaidDiagram key={idx} chart={diagram} />
-                    ))}
+              <div className="space-y-4">
+                {result.metadata?.demoMode && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                    <span className="text-lg">⚡</span>
+                    <span>מצב דמו - חבר API Key לתוצאות מותאמות אישית</span>
                   </div>
                 )}
-
-                {/* Render the rest of the content */}
-                <div className="markdown-content prose prose-sm max-w-none">
-                  <ReactMarkdown>{result.data}</ReactMarkdown>
-                </div>
-              </>
+                <MarkdownRenderer content={result.data} />
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                 <Network className="w-12 h-12 mb-4 opacity-50" />

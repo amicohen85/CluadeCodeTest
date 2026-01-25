@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FileText, Send, Loader2, Copy, Download } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { FileText, Send, Loader2, Copy, Download, CheckCircle } from 'lucide-react';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { specificationApi } from '../services/api';
 
 function SpecificationPage() {
@@ -189,8 +189,14 @@ function SpecificationPage() {
                 <p className="text-sm">זה עשוי לקחת מספר שניות</p>
               </div>
             ) : result ? (
-              <div className="markdown-content prose prose-sm max-w-none">
-                <ReactMarkdown>{result.data}</ReactMarkdown>
+              <div className="space-y-4">
+                {result.metadata?.demoMode && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                    <span className="text-lg">⚡</span>
+                    <span>מצב דמו - חבר API Key לתוצאות מותאמות אישית</span>
+                  </div>
+                )}
+                <MarkdownRenderer content={result.data} />
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
