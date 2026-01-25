@@ -5,16 +5,23 @@ import { logger } from '../utils/logger.js';
 /**
  * Base Agent class for AI-powered system analysis
  * Supports both Anthropic Claude and OpenAI models
+ * Includes Demo Mode for testing without API keys
  */
 export class BaseAgent {
   constructor(config = {}) {
     this.name = config.name || 'BaseAgent';
-    this.provider = config.provider || 'anthropic';
+    this.provider = config.provider || process.env.AI_PROVIDER || 'anthropic';
     this.model = config.model || this.getDefaultModel();
     this.maxTokens = config.maxTokens || 4096;
     this.temperature = config.temperature || 0.7;
+    this.demoMode = process.env.DEMO_MODE === 'true' ||
+                    (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY);
 
-    this.initializeClient();
+    if (this.demoMode) {
+      logger.info(`[${this.name}] Running in DEMO MODE - no API key required`);
+    } else {
+      this.initializeClient();
+    }
   }
 
   getDefaultModel() {
@@ -44,6 +51,21 @@ export class BaseAgent {
   }
 
   /**
+   * Get demo response - Override in subclasses
+   */
+  getDemoResponse(userMessage, context = {}) {
+    return `# Demo Response
+
+This is a demo response from ${this.name}.
+
+**Your Input:** ${userMessage.substring(0, 100)}...
+
+---
+
+> Note: This is demo mode. Connect an API key for real AI-generated content.`;
+  }
+
+  /**
    * Process a request through the AI model
    */
   async process(userMessage, context = {}) {
@@ -51,13 +73,19 @@ export class BaseAgent {
     logger.info(`[${this.name}] Processing request...`);
 
     try {
-      const systemPrompt = this.getSystemPrompt(context);
       let response;
 
-      if (this.provider === 'anthropic') {
-        response = await this.processWithAnthropic(systemPrompt, userMessage);
+      if (this.demoMode) {
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = this.getDemoResponse(userMessage, context);
       } else {
-        response = await this.processWithOpenAI(systemPrompt, userMessage);
+        const systemPrompt = this.getSystemPrompt(context);
+        if (this.provider === 'anthropic') {
+          response = await this.processWithAnthropic(systemPrompt, userMessage);
+        } else {
+          response = await this.processWithOpenAI(systemPrompt, userMessage);
+        }
       }
 
       const duration = Date.now() - startTime;
@@ -68,8 +96,9 @@ export class BaseAgent {
         data: response,
         metadata: {
           agent: this.name,
-          model: this.model,
-          duration
+          model: this.demoMode ? 'demo-mode' : this.model,
+          duration,
+          demoMode: this.demoMode
         }
       };
     } catch (error) {

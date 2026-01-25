@@ -12,6 +12,102 @@ export class DesignAgent extends BaseAgent {
     });
   }
 
+  getDemoResponse(userMessage, context = {}) {
+    return `# עיצוב מסכים - דמו
+
+## מסך: דף הבית / Dashboard
+
+### Layout Structure
+\`\`\`
++--------------------------------------------------+
+|  HEADER                                          |
+|  [Logo]     [Search...]     [Bell] [User Menu]   |
++--------------------------------------------------+
+|  SIDEBAR  |  MAIN CONTENT                        |
+|           |                                       |
+|  [Home]   |  +-------------+ +-------------+     |
+|  [Users]  |  | Card 1      | | Card 2      |     |
+|  [Reports]|  | KPI: 1,234  | | KPI: 567    |     |
+|  [Settings]| +-------------+ +-------------+     |
+|           |                                       |
+|           |  +--------------------------------+  |
+|           |  | Chart Area                     |  |
+|           |  |   [Bar Chart / Line Graph]     |  |
+|           |  +--------------------------------+  |
+|           |                                       |
++--------------------------------------------------+
+|  FOOTER - © 2024 Company                         |
++--------------------------------------------------+
+\`\`\`
+
+---
+
+## Component Specifications
+
+### 1. Header Component
+| Property | Value |
+|----------|-------|
+| Height | 64px |
+| Background | #FFFFFF |
+| Shadow | 0 2px 4px rgba(0,0,0,0.1) |
+| Position | Fixed top |
+
+### 2. Sidebar Component
+| Property | Value |
+|----------|-------|
+| Width | 240px (desktop), 0px (mobile) |
+| Background | #1a1a2e |
+| Text Color | #FFFFFF |
+
+### 3. KPI Cards
+| State | Style |
+|-------|-------|
+| Default | bg-white, shadow-md, rounded-lg |
+| Hover | shadow-lg, scale(1.02) |
+| Loading | Skeleton animation |
+
+---
+
+## User Flow
+
+\`\`\`mermaid
+flowchart TD
+    A[Login Page] --> B{Auth OK?}
+    B -->|Yes| C[Dashboard]
+    B -->|No| D[Error Message]
+    D --> A
+    C --> E[View Reports]
+    C --> F[Manage Users]
+    C --> G[Settings]
+\`\`\`
+
+---
+
+## Responsive Breakpoints
+
+| Breakpoint | Layout Changes |
+|------------|----------------|
+| Desktop (>1024px) | Full sidebar, 3 columns |
+| Tablet (768-1024px) | Collapsible sidebar, 2 columns |
+| Mobile (<768px) | Hidden sidebar, 1 column |
+
+---
+
+## Color Palette
+
+| Name | Hex | Usage |
+|------|-----|-------|
+| Primary | #3B82F6 | Buttons, Links |
+| Secondary | #6B7280 | Secondary text |
+| Success | #10B981 | Success states |
+| Error | #EF4444 | Error states |
+| Background | #F3F4F6 | Page background |
+
+---
+
+> **הערה:** זהו עיצוב דמו. חבר API Key לקבלת תוכן מותאם אישית.`;
+  }
+
   getSystemPrompt(context = {}) {
     return `You are an expert UI/UX Designer AI assistant specializing in creating detailed screen designs and user interface specifications.
 

@@ -12,6 +12,78 @@ export class AgileAgent extends BaseAgent {
     });
   }
 
+  getDemoResponse(userMessage, context = {}) {
+    return `# פירוק AGILE - דמו
+
+## Epic 1: מערכת ניהול משתמשים
+**עדיפות:** גבוהה | **ספרינטים משוערים:** 2
+
+### User Stories:
+
+#### US-001: הרשמת משתמש חדש
+**תיאור:** כמשתמש חדש, אני רוצה להירשם למערכת כדי לגשת לשירותים
+**Story Points:** 5 | **תגיות:** frontend, backend, database
+
+**קריטריונים לקבלה:**
+- [ ] טופס הרשמה עם ולידציה
+- [ ] שליחת אימייל אימות
+- [ ] שמירת פרטי משתמש בבסיס נתונים
+
+**משימות:**
+| ID | משימה | שעות | מיומנויות |
+|----|--------|------|-----------|
+| T-001 | עיצוב טופס הרשמה | 4 | React, CSS |
+| T-002 | בניית API הרשמה | 6 | Node.js, Express |
+| T-003 | אינטגרציית מייל | 3 | SendGrid |
+
+---
+
+#### US-002: התחברות למערכת
+**תיאור:** כמשתמש רשום, אני רוצה להתחבר למערכת בצורה מאובטחת
+**Story Points:** 3 | **תגיות:** frontend, backend, security
+
+**קריטריונים לקבלה:**
+- [ ] טופס התחברות
+- [ ] אימות JWT
+- [ ] זכירת משתמש
+
+---
+
+## Epic 2: דשבורד ראשי
+**עדיפות:** גבוהה | **ספרינטים משוערים:** 1
+
+### User Stories:
+
+#### US-003: צפייה בסטטיסטיקות
+**Story Points:** 8 | **תגיות:** frontend, charts
+
+---
+
+## סיכום
+
+| מדד | ערך |
+|-----|-----|
+| סה"כ Story Points | 34 |
+| ספרינטים משוערים | 3 |
+| Velocity מומלץ | 12 נק'/ספרינט |
+
+\`\`\`mermaid
+gantt
+    title תכנון ספרינטים
+    dateFormat  YYYY-MM-DD
+    section Sprint 1
+    US-001 הרשמה     :a1, 2024-01-01, 14d
+    section Sprint 2
+    US-002 התחברות   :a2, 2024-01-15, 14d
+    section Sprint 3
+    US-003 דשבורד    :a3, 2024-01-29, 14d
+\`\`\`
+
+---
+
+> **הערה:** זהו מסמך דמו. חבר API Key לקבלת תוכן מותאם אישית.`;
+  }
+
   getSystemPrompt(context = {}) {
     return `You are an expert Agile Coach and Scrum Master AI assistant specializing in breaking down software specifications into actionable development tasks.
 
