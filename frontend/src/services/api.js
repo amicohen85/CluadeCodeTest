@@ -1,0 +1,56 @@
+import axios from 'axios';
+
+const API_BASE_URL = '/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Projects API
+export const projectsApi = {
+  getAll: () => api.get('/projects'),
+  getById: (id) => api.get(`/projects/${id}`),
+  create: (data) => api.post('/projects', data),
+  update: (id, data) => api.put(`/projects/${id}`, data),
+  delete: (id) => api.delete(`/projects/${id}`)
+};
+
+// Specification API
+export const specificationApi = {
+  generate: (data) => api.post('/specifications/generate', data),
+  generateSection: (data) => api.post('/specifications/section', data),
+  analyze: (data) => api.post('/specifications/analyze', data)
+};
+
+// Agile API
+export const agileApi = {
+  breakdown: (data) => api.post('/agile/breakdown', data),
+  sprintPlan: (data) => api.post('/agile/sprint-plan', data),
+  estimate: (data) => api.post('/agile/estimate', data),
+  definitionOfDone: (data) => api.post('/agile/definition-of-done', data)
+};
+
+// Design API
+export const designApi = {
+  generateScreens: (data) => api.post('/design/screens', data),
+  generateUserFlow: (data) => api.post('/design/user-flow', data),
+  generateDesignSystem: (data) => api.post('/design/design-system', data),
+  generateWireframe: (data) => api.post('/design/wireframe', data)
+};
+
+// Architecture API
+export const architectureApi = {
+  generate: (data) => api.post('/architecture/generate', data),
+  generateInterface: (data) => api.post('/architecture/interface', data),
+  generateDatabase: (data) => api.post('/architecture/database', data),
+  generateIntegration: (data) => api.post('/architecture/integration', data),
+  generateC4Model: (data) => api.post('/architecture/c4-model', data)
+};
+
+// Health check
+export const healthCheck = () => api.get('/health');
+
+export default api;

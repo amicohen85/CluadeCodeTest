@@ -4,21 +4,34 @@ This file provides guidance for AI assistants (like Claude) working with this co
 
 ## Repository Overview
 
-**Project Name:** CluadeCodeTest
-**Status:** New/Empty Repository
+**Project Name:** System Analyst AI
+**Status:** Active Development
 **Last Updated:** 2026-01-25
-
-> **Note:** This repository is currently empty. Update this file as the project develops.
+**Version:** 1.0.0
 
 ---
 
 ## Project Description
 
-<!-- TODO: Add project description when initialized -->
-This is a new repository awaiting project initialization. Update this section with:
-- What the project does
-- Key features and functionality
-- Target users/audience
+**System Analyst AI** is an AI-powered web platform designed for system analysts. It leverages AI agents (Claude/GPT-4) to automate the creation of:
+
+- **Specification Documents** - Comprehensive system requirements documentation
+- **AGILE Artifacts** - Epics, User Stories, Tasks with story point estimation
+- **UI/UX Designs** - Screen specifications, wireframes, user flows, design systems
+- **Architecture Diagrams** - System architecture, interface specs, database schemas, C4 models
+
+### Target Users
+- System Analysts
+- Product Managers
+- Solution Architects
+- Development Team Leads
+
+### Key Features
+1. AI-powered document generation
+2. Multi-format output (Markdown, JSON, Mermaid diagrams)
+3. Project management capabilities
+4. Hebrew and English language support
+5. Integration with Claude and GPT-4 APIs
 
 ---
 
@@ -26,33 +39,70 @@ This is a new repository awaiting project initialization. Update this section wi
 
 ```
 /
-├── CLAUDE.md           # This file - AI assistant guidelines
-└── (awaiting project initialization)
+├── CLAUDE.md                    # AI assistant guidelines (this file)
+├── backend/                     # Node.js/Express backend
+│   ├── package.json            # Backend dependencies
+│   ├── .env.example            # Environment variables template
+│   └── src/
+│       ├── index.js            # Express server entry point
+│       ├── agents/             # AI Agent implementations
+│       │   ├── BaseAgent.js    # Base agent class with AI integration
+│       │   ├── SpecificationAgent.js  # Specification document generator
+│       │   ├── AgileAgent.js   # AGILE artifacts generator
+│       │   ├── DesignAgent.js  # UI/UX design generator
+│       │   └── ArchitectureAgent.js   # Architecture diagram generator
+│       ├── routes/             # API route handlers
+│       │   ├── projectRoutes.js
+│       │   ├── specificationRoutes.js
+│       │   ├── agileRoutes.js
+│       │   ├── designRoutes.js
+│       │   └── architectureRoutes.js
+│       └── utils/
+│           └── logger.js       # Winston logger configuration
+└── frontend/                    # React frontend
+    ├── package.json            # Frontend dependencies
+    ├── vite.config.js          # Vite configuration
+    ├── tailwind.config.js      # Tailwind CSS configuration
+    ├── index.html              # HTML entry point
+    └── src/
+        ├── main.jsx            # React entry point
+        ├── App.jsx             # Main application component
+        ├── components/
+        │   └── Layout.jsx      # Main layout with navigation
+        ├── pages/
+        │   ├── Dashboard.jsx   # Home dashboard
+        │   ├── ProjectsPage.jsx
+        │   ├── SpecificationPage.jsx
+        │   ├── AgilePage.jsx
+        │   ├── DesignPage.jsx
+        │   └── ArchitecturePage.jsx
+        ├── services/
+        │   └── api.js          # API client (axios)
+        └── styles/
+            └── index.css       # Global styles (Tailwind)
 ```
-
-<!-- TODO: Update structure as project develops. Example:
-/
-├── src/                # Source code
-│   ├── components/     # UI components
-│   ├── utils/          # Utility functions
-│   └── index.ts        # Entry point
-├── tests/              # Test files
-├── docs/               # Documentation
-├── package.json        # Dependencies and scripts
-├── tsconfig.json       # TypeScript configuration
-└── CLAUDE.md           # AI assistant guidelines
--->
 
 ---
 
 ## Technology Stack
 
-<!-- TODO: Update when project is initialized -->
-- **Language:** TBD
-- **Framework:** TBD
-- **Build Tool:** TBD
-- **Testing:** TBD
-- **Package Manager:** TBD
+### Backend
+- **Runtime:** Node.js 18+
+- **Framework:** Express.js 4.x
+- **AI SDKs:** Anthropic SDK, OpenAI SDK
+- **Logging:** Winston
+- **Security:** Helmet, express-rate-limit
+- **Validation:** express-validator
+
+### Frontend
+- **Framework:** React 18
+- **Build Tool:** Vite 5
+- **Styling:** Tailwind CSS 3
+- **State Management:** Zustand
+- **HTTP Client:** Axios
+- **Icons:** Lucide React
+- **Diagrams:** Mermaid.js
+- **UI Components:** Radix UI
 
 ---
 
@@ -62,30 +112,57 @@ This is a new repository awaiting project initialization. Update this section wi
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/amicohen85/CluadeCodeTest.git
 cd CluadeCodeTest
 
-# TODO: Add setup commands when project is initialized
-# npm install / yarn install / pip install -r requirements.txt / etc.
+# Backend setup
+cd backend
+npm install
+cp .env.example .env
+# Edit .env and add your API keys
+npm run dev
+
+# Frontend setup (new terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+### Environment Setup
+
+Create `backend/.env` with:
+```env
+PORT=3001
+NODE_ENV=development
+ANTHROPIC_API_KEY=your_anthropic_key
+OPENAI_API_KEY=your_openai_key
 ```
 
 ### Common Commands
 
-<!-- TODO: Update with actual commands -->
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install dependencies |
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm test` | Run tests |
-| `npm run lint` | Run linter |
+| Command | Location | Description |
+|---------|----------|-------------|
+| `npm run dev` | backend/ | Start backend in dev mode (nodemon) |
+| `npm start` | backend/ | Start backend in production mode |
+| `npm run dev` | frontend/ | Start frontend dev server (Vite) |
+| `npm run build` | frontend/ | Build frontend for production |
+| `npm test` | backend/ | Run backend tests (Jest) |
+| `npm run lint` | both | Run ESLint |
 
-### Git Workflow
+### API Endpoints
 
-1. Create feature branch from main: `git checkout -b feature/your-feature`
-2. Make changes and commit with descriptive messages
-3. Push branch and create pull request
-4. Request review and merge after approval
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| GET/POST | `/api/projects` | Project management |
+| POST | `/api/specifications/generate` | Generate specification document |
+| POST | `/api/agile/breakdown` | Break down to AGILE tasks |
+| POST | `/api/agile/sprint-plan` | Generate sprint plan |
+| POST | `/api/design/screens` | Generate screen designs |
+| POST | `/api/design/user-flow` | Generate user flow diagrams |
+| POST | `/api/architecture/generate` | Generate system architecture |
+| POST | `/api/architecture/interface` | Generate API specifications |
+| POST | `/api/architecture/database` | Generate database schema |
 
 ---
 
@@ -93,159 +170,193 @@ cd CluadeCodeTest
 
 ### General Guidelines
 
+- Use ES Modules (`import/export`) throughout
 - Write clean, readable, and self-documenting code
-- Follow the principle of least surprise
 - Keep functions small and focused (single responsibility)
 - Use meaningful variable and function names
-- Add comments only when the "why" isn't obvious from the code
+- Add comments only when the "why" isn't obvious
 
 ### File Naming
 
-<!-- TODO: Update based on project conventions -->
-- Use kebab-case for file names: `my-component.ts`
-- Use PascalCase for component files: `MyComponent.tsx`
-- Use camelCase for utility files: `formatDate.ts`
+- **Components:** PascalCase - `MyComponent.jsx`
+- **Utilities:** camelCase - `formatDate.js`
+- **Routes:** camelCase with suffix - `projectRoutes.js`
+- **Agents:** PascalCase with suffix - `SpecificationAgent.js`
 
 ### Code Style
 
-<!-- TODO: Update based on project's linting configuration -->
-- Indent with 2 spaces (or tabs based on project config)
-- Use single quotes for strings (or double based on config)
+- Indent with 2 spaces
+- Use single quotes for strings
 - Add trailing commas in multi-line structures
 - Keep line length under 100 characters
+- Use async/await for asynchronous operations
+
+### React Patterns
+
+- Functional components with hooks
+- Destructure props
+- Use `useState` and `useEffect` appropriately
+- Keep components focused and composable
+
+---
+
+## AI Agents Architecture
+
+### BaseAgent (base class)
+All agents extend `BaseAgent` which provides:
+- AI provider abstraction (Anthropic/OpenAI)
+- Message processing
+- Structured output parsing
+- Error handling and logging
+
+### Agent Types
+
+1. **SpecificationAgent**
+   - `generateSpecification()` - Full specification document
+   - `generateSection()` - Specific sections (functional, nonFunctional, etc.)
+   - `analyzeSpecification()` - Analyze existing specs
+
+2. **AgileAgent**
+   - `breakdownSpecification()` - Epics & User Stories
+   - `generateSprintPlan()` - Sprint planning
+   - `estimateStoryPoints()` - Story point estimation
+   - `generateDefinitionOfDone()` - DoD checklists
+
+3. **DesignAgent**
+   - `generateScreenDesigns()` - Screen specifications
+   - `generateUserFlow()` - User flow diagrams
+   - `generateDesignSystem()` - Design tokens
+   - `generateWireframe()` - ASCII wireframes
+
+4. **ArchitectureAgent**
+   - `generateArchitecture()` - System architecture
+   - `generateInterfaceSpec()` - API specifications
+   - `generateDatabaseSchema()` - ERD and DDL
+   - `generateIntegrationArchitecture()` - Integration patterns
+   - `generateC4Model()` - C4 diagrams
 
 ---
 
 ## Testing Guidelines
 
-<!-- TODO: Update when testing is configured -->
-
 ### Running Tests
 
 ```bash
-# Run all tests
+# Backend tests
+cd backend
 npm test
-
-# Run tests in watch mode
-npm test -- --watch
-
-# Run specific test file
-npm test -- path/to/test.spec.ts
-
-# Run with coverage
 npm test -- --coverage
+
+# Frontend tests
+cd frontend
+npm test
 ```
 
 ### Writing Tests
 
-- Place test files next to source files or in `__tests__` directory
-- Name test files with `.test.ts` or `.spec.ts` suffix
-- Write descriptive test names that explain the expected behavior
+- Place test files in `tests/` directory or next to source files
+- Use `.test.js` or `.spec.js` suffix
 - Follow AAA pattern: Arrange, Act, Assert
-- Mock external dependencies appropriately
+- Mock external APIs (AI services)
 
 ---
 
 ## Architecture Decisions
 
-<!-- TODO: Document key architectural decisions as they are made -->
-
-### Decision Log
-
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2026-01-25 | Repository created | Initial setup |
+| 2026-01-25 | Node.js + Express backend | Mature ecosystem, good AI SDK support |
+| 2026-01-25 | React + Vite frontend | Fast development, modern tooling |
+| 2026-01-25 | Tailwind CSS | Rapid UI development, consistent styling |
+| 2026-01-25 | Multi-agent architecture | Separation of concerns, specialized AI prompts |
+| 2026-01-25 | Mermaid for diagrams | Text-based, version-controllable diagrams |
 
 ---
 
 ## Key Files Reference
 
-<!-- TODO: Update as important files are added -->
-
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | AI assistant guidelines (this file) |
-| `README.md` | Project documentation (TBD) |
-| `package.json` | Dependencies and scripts (TBD) |
+| `backend/src/index.js` | Express server setup, middleware, routes |
+| `backend/src/agents/BaseAgent.js` | Base AI agent with provider abstraction |
+| `frontend/src/App.jsx` | React app root with routing |
+| `frontend/src/components/Layout.jsx` | Main layout with sidebar navigation |
+| `frontend/src/services/api.js` | Axios API client |
 
 ---
 
 ## AI Assistant Instructions
 
-When working with this codebase, AI assistants should:
-
 ### Do's
 
-- **Read before writing:** Always read existing files before making modifications
-- **Follow existing patterns:** Match the code style and conventions already in use
-- **Keep changes minimal:** Only make changes that are directly requested
-- **Test your changes:** Run tests after making modifications
-- **Commit appropriately:** Use clear, descriptive commit messages
-- **Update documentation:** Keep this file and other docs up to date
+- **Read before writing:** Always read existing files before modifications
+- **Follow existing patterns:** Match code style and conventions
+- **Keep changes minimal:** Only make requested changes
+- **Test your changes:** Run tests after modifications
+- **Update CLAUDE.md:** Keep documentation current
+- **Use the agent pattern:** New AI features should follow the agent architecture
 
 ### Don'ts
 
-- **Don't over-engineer:** Avoid adding unnecessary complexity or features
-- **Don't ignore errors:** Address build/test failures before continuing
-- **Don't assume:** Read code to understand context rather than guessing
-- **Don't break conventions:** Follow established patterns in the codebase
-- **Don't forget edge cases:** Consider error handling and boundary conditions
+- **Don't over-engineer:** Avoid unnecessary complexity
+- **Don't ignore errors:** Address build/test failures
+- **Don't assume:** Read code to understand context
+- **Don't break API contracts:** Maintain backwards compatibility
+- **Don't hardcode secrets:** Use environment variables
 
-### Common Tasks
+### Adding a New AI Agent
 
-#### Adding a New Feature
-1. Understand the existing architecture
-2. Plan the implementation approach
-3. Write the feature code following conventions
-4. Add appropriate tests
-5. Update documentation if needed
-6. Commit with descriptive message
-
-#### Fixing a Bug
-1. Reproduce and understand the issue
-2. Find the root cause in the code
-3. Implement the minimal fix
-4. Add a test to prevent regression
-5. Verify the fix doesn't break other functionality
-6. Commit with reference to the issue
-
-#### Refactoring Code
-1. Ensure tests exist for the code being refactored
-2. Make incremental changes
-3. Run tests after each change
-4. Keep the external API stable if possible
-5. Document any breaking changes
+1. Create new file in `backend/src/agents/` extending `BaseAgent`
+2. Implement specialized system prompt via `getSystemPrompt()`
+3. Add processing methods for specific tasks
+4. Create corresponding route in `backend/src/routes/`
+5. Add API functions in `frontend/src/services/api.js`
+6. Create frontend page in `frontend/src/pages/`
+7. Update navigation in `Layout.jsx`
+8. Document in this file
 
 ---
 
 ## Environment Variables
 
-<!-- TODO: Document environment variables when they are added -->
-
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
+| `PORT` | Backend server port | No | `3001` |
 | `NODE_ENV` | Runtime environment | No | `development` |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key | Yes* | - |
+| `OPENAI_API_KEY` | OpenAI API key | Yes* | - |
+| `AI_PROVIDER` | AI provider (anthropic/openai) | No | `anthropic` |
+| `LOG_LEVEL` | Logging level | No | `info` |
+
+*At least one AI provider key is required
 
 ---
 
 ## Troubleshooting
 
-<!-- TODO: Add common issues and solutions as they arise -->
-
 ### Common Issues
 
-**Issue:** TBD
-**Solution:** TBD
+**Issue:** "API key not configured" error
+**Solution:** Ensure `.env` file exists in `backend/` with valid API keys
+
+**Issue:** Frontend can't connect to backend
+**Solution:** Check that backend is running on port 3001, verify Vite proxy config
+
+**Issue:** Mermaid diagrams not rendering
+**Solution:** Ensure mermaid is properly initialized, check browser console for errors
+
+**Issue:** Rate limit errors from AI provider
+**Solution:** Reduce request frequency or upgrade API plan
 
 ---
 
 ## Resources
 
-<!-- TODO: Add relevant links -->
-
 - **Repository:** [GitHub](https://github.com/amicohen85/CluadeCodeTest)
-- **Documentation:** TBD
-- **Issue Tracker:** TBD
+- **Anthropic API:** [Documentation](https://docs.anthropic.com)
+- **OpenAI API:** [Documentation](https://platform.openai.com/docs)
+- **Mermaid:** [Documentation](https://mermaid.js.org)
+- **Tailwind CSS:** [Documentation](https://tailwindcss.com/docs)
 
 ---
 
@@ -254,6 +365,7 @@ When working with this codebase, AI assistants should:
 | Date | Author | Changes |
 |------|--------|---------|
 | 2026-01-25 | Claude | Initial CLAUDE.md created |
+| 2026-01-25 | Claude | Full system implementation: backend, frontend, AI agents |
 
 ---
 
