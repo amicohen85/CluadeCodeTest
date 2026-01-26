@@ -12,8 +12,10 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  Copy
+  Copy,
+  FileWarning
 } from 'lucide-react';
+import mammoth from 'mammoth';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { templatesApi } from '../services/api';
 
@@ -55,16 +57,89 @@ function TemplateLearningPage() {
     }
   };
 
+  const [uploadingFile, setUploadingFile] = useState(false);
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setUploadedContent(event.target.result);
-      setDocumentName(file.name.replace(/\.[^/.]+$/, ''));
-    };
-    reader.readAsText(file);
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.split('.').pop();
+
+    setUploadingFile(true);
+    setError(null);
+    setDocumentName(file.name.replace(/\.[^/.]+$/, ''));
+
+    try {
+      // Handle DOCX files with mammoth
+      if (fileExtension === 'docx' || fileExtension === 'doc') {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+
+        // Convert HTML to plain text with some formatting preserved
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = result.value;
+
+        // Convert to markdown-like format
+        let text = '';
+        const processNode = (node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent;
+          }
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+            const children = Array.from(node.childNodes).map(processNode).join('');
+
+            switch (tag) {
+              case 'h1': return `# ${children}\n\n`;
+              case 'h2': return `## ${children}\n\n`;
+              case 'h3': return `### ${children}\n\n`;
+              case 'h4': return `#### ${children}\n\n`;
+              case 'p': return `${children}\n\n`;
+              case 'ul': return `${children}\n`;
+              case 'ol': return `${children}\n`;
+              case 'li': return `- ${children}\n`;
+              case 'strong':
+              case 'b': return `**${children}**`;
+              case 'em':
+              case 'i': return `*${children}*`;
+              case 'br': return '\n';
+              case 'table': return `${children}\n`;
+              case 'tr': return `|${children}\n`;
+              case 'td':
+              case 'th': return ` ${children} |`;
+              default: return children;
+            }
+          }
+          return '';
+        };
+
+        text = processNode(tempDiv);
+        setUploadedContent(text.trim());
+
+      // Handle plain text files (MD, TXT)
+      } else if (fileExtension === 'md' || fileExtension === 'txt') {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setUploadedContent(event.target.result);
+          setUploadingFile(false);
+        };
+        reader.onerror = () => {
+          setError('שגיאה בקריאת הקובץ');
+          setUploadingFile(false);
+        };
+        reader.readAsText(file);
+        return; // Don't set uploadingFile to false here, reader will do it
+
+      } else {
+        setError(`סוג קובץ לא נתמך: .${fileExtension}. השתמש ב-MD, TXT או DOCX`);
+      }
+    } catch (err) {
+      console.error('Error reading file:', err);
+      setError('שגיאה בקריאת הקובץ. נסה קובץ אחר.');
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -222,18 +297,33 @@ function TemplateLearningPage() {
             <div className="space-y-4">
               {/* File Upload */}
               <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors"
+                onClick={() => !uploadingFile && fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                  uploadingFile
+                    ? 'border-violet-400 bg-violet-50 cursor-wait'
+                    : 'border-gray-300 cursor-pointer hover:border-violet-400 hover:bg-violet-50'
+                }`}
               >
-                <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 font-medium">לחץ להעלאת קובץ</p>
-                <p className="text-sm text-gray-400">או גרור לכאן קובץ MD, TXT, DOCX</p>
+                {uploadingFile ? (
+                  <>
+                    <Loader2 className="w-10 h-10 text-violet-500 mx-auto mb-3 animate-spin" />
+                    <p className="text-violet-600 font-medium">מעבד את הקובץ...</p>
+                    <p className="text-sm text-violet-400">ממיר מסמך Word לטקסט</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600 font-medium">לחץ להעלאת קובץ</p>
+                    <p className="text-sm text-gray-400">או גרור לכאן קובץ MD, TXT, DOCX</p>
+                  </>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".md,.txt,.doc,.docx"
                   onChange={handleFileUpload}
                   className="hidden"
+                  disabled={uploadingFile}
                 />
               </div>
 
