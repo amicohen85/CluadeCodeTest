@@ -27,51 +27,6 @@ const upload = multer({
 });
 
 /**
- * Convert HTML to Markdown-like format
- */
-function htmlToMarkdown(html) {
-  const tempDiv = { innerHTML: html };
-
-  // Simple HTML to Markdown conversion
-  let text = html
-    // Headings
-    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
-    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
-    .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
-    // Paragraphs and breaks
-    .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    // Bold and italic
-    .replace(/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**')
-    .replace(/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*')
-    // Lists
-    .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
-    .replace(/<\/?[uo]l[^>]*>/gi, '\n')
-    // Tables (basic support)
-    .replace(/<tr[^>]*>(.*?)<\/tr>/gi, '|$1\n')
-    .replace(/<t[dh][^>]*>(.*?)<\/t[dh]>/gi, ' $1 |')
-    .replace(/<\/?table[^>]*>/gi, '\n')
-    .replace(/<\/?thead[^>]*>/gi, '')
-    .replace(/<\/?tbody[^>]*>/gi, '')
-    // Remove remaining HTML tags
-    .replace(/<[^>]+>/g, '')
-    // Decode HTML entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    // Clean up extra whitespace
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-  return text;
-}
-
-/**
  * Upload and parse document file
  * POST /api/templates/upload
  */
@@ -84,28 +39,49 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const { originalname, buffer, mimetype } = req.file;
     const extension = originalname.split('.').pop().toLowerCase();
 
-    logger.info(`Processing uploaded file: ${originalname} (${mimetype})`);
+    logger.info(`Processing uploaded file: ${originalname} (${mimetype}, ${buffer.length} bytes)`);
 
     let content = '';
 
-    if (extension === 'docx' || extension === 'doc') {
-      // Parse DOCX with mammoth
-      const result = await mammoth.convertToHtml({ buffer });
-      content = htmlToMarkdown(result.value);
+    if (extension === 'docx') {
+      // Parse DOCX with mammoth - use extractRawText for reliable text extraction
+      try {
+        const result = await mammoth.extractRawText({ buffer });
+        content = result.value;
 
-      if (result.messages && result.messages.length > 0) {
-        logger.warn('Mammoth warnings:', result.messages);
+        logger.info(`Extracted ${content.length} characters from DOCX`);
+
+        if (result.messages && result.messages.length > 0) {
+          logger.warn('Mammoth warnings:', result.messages);
+        }
+      } catch (mammothError) {
+        logger.error('Mammoth extraction failed:', mammothError);
+        throw new Error('שגיאה בקריאת קובץ DOCX. ודא שהקובץ תקין.');
       }
+    } else if (extension === 'doc') {
+      // Old .doc format is not fully supported
+      return res.status(400).json({
+        error: 'פורמט DOC ישן אינו נתמך',
+        message: 'נא לשמור את הקובץ בפורמט DOCX (Word 2007+) ולנסות שוב'
+      });
     } else {
       // Plain text files (MD, TXT)
       content = buffer.toString('utf-8');
     }
 
+    // Validate we got actual content
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({
+        error: 'הקובץ ריק או לא ניתן לקרוא את תוכנו'
+      });
+    }
+
     res.json({
       success: true,
-      content,
+      content: content.trim(),
       filename: originalname,
-      extension
+      extension,
+      charCount: content.length
     });
 
   } catch (error) {
