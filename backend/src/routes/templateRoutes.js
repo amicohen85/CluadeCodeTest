@@ -1,9 +1,121 @@
 import express from 'express';
+import multer from 'multer';
+import mammoth from 'mammoth';
 import { DocumentLearningAgent } from '../agents/DocumentLearningAgent.js';
 import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 const learningAgent = new DocumentLearningAgent();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'text/plain', // .txt
+      'text/markdown', // .md
+    ];
+    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(docx?|txt|md)$/i)) {
+      cb(null, true);
+    } else {
+      cb(new Error('סוג קובץ לא נתמך. השתמש ב-DOCX, DOC, TXT או MD'), false);
+    }
+  }
+});
+
+/**
+ * Convert HTML to Markdown-like format
+ */
+function htmlToMarkdown(html) {
+  const tempDiv = { innerHTML: html };
+
+  // Simple HTML to Markdown conversion
+  let text = html
+    // Headings
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
+    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n')
+    .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n')
+    // Paragraphs and breaks
+    .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Bold and italic
+    .replace(/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**')
+    .replace(/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*')
+    // Lists
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+    .replace(/<\/?[uo]l[^>]*>/gi, '\n')
+    // Tables (basic support)
+    .replace(/<tr[^>]*>(.*?)<\/tr>/gi, '|$1\n')
+    .replace(/<t[dh][^>]*>(.*?)<\/t[dh]>/gi, ' $1 |')
+    .replace(/<\/?table[^>]*>/gi, '\n')
+    .replace(/<\/?thead[^>]*>/gi, '')
+    .replace(/<\/?tbody[^>]*>/gi, '')
+    // Remove remaining HTML tags
+    .replace(/<[^>]+>/g, '')
+    // Decode HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    // Clean up extra whitespace
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return text;
+}
+
+/**
+ * Upload and parse document file
+ * POST /api/templates/upload
+ */
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'לא הועלה קובץ' });
+    }
+
+    const { originalname, buffer, mimetype } = req.file;
+    const extension = originalname.split('.').pop().toLowerCase();
+
+    logger.info(`Processing uploaded file: ${originalname} (${mimetype})`);
+
+    let content = '';
+
+    if (extension === 'docx' || extension === 'doc') {
+      // Parse DOCX with mammoth
+      const result = await mammoth.convertToHtml({ buffer });
+      content = htmlToMarkdown(result.value);
+
+      if (result.messages && result.messages.length > 0) {
+        logger.warn('Mammoth warnings:', result.messages);
+      }
+    } else {
+      // Plain text files (MD, TXT)
+      content = buffer.toString('utf-8');
+    }
+
+    res.json({
+      success: true,
+      content,
+      filename: originalname,
+      extension
+    });
+
+  } catch (error) {
+    logger.error('Error processing uploaded file:', error);
+    res.status(500).json({
+      error: 'שגיאה בעיבוד הקובץ',
+      message: error.message
+    });
+  }
+});
 
 // In-memory storage for templates (in production, use a database)
 const templates = new Map();

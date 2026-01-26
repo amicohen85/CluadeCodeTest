@@ -13,9 +13,9 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  FileWarning
+  FileWarning,
+  File
 } from 'lucide-react';
-import mammoth from 'mammoth';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { templatesApi } from '../services/api';
 
@@ -58,87 +58,40 @@ function TemplateLearningPage() {
   };
 
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState('');
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const fileName = file.name.toLowerCase();
-    const fileExtension = fileName.split('.').pop();
-
     setUploadingFile(true);
+    setUploadProgress(0);
     setError(null);
+    setUploadedFileName(file.name);
     setDocumentName(file.name.replace(/\.[^/.]+$/, ''));
 
     try {
-      // Handle DOCX files with mammoth
-      if (fileExtension === 'docx' || fileExtension === 'doc') {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.convertToHtml({ arrayBuffer });
+      // Upload to backend for processing
+      const response = await templatesApi.uploadFile(file, (progress) => {
+        setUploadProgress(progress);
+      });
 
-        // Convert HTML to plain text with some formatting preserved
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = result.value;
-
-        // Convert to markdown-like format
-        let text = '';
-        const processNode = (node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            return node.textContent;
-          }
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const tag = node.tagName.toLowerCase();
-            const children = Array.from(node.childNodes).map(processNode).join('');
-
-            switch (tag) {
-              case 'h1': return `# ${children}\n\n`;
-              case 'h2': return `## ${children}\n\n`;
-              case 'h3': return `### ${children}\n\n`;
-              case 'h4': return `#### ${children}\n\n`;
-              case 'p': return `${children}\n\n`;
-              case 'ul': return `${children}\n`;
-              case 'ol': return `${children}\n`;
-              case 'li': return `- ${children}\n`;
-              case 'strong':
-              case 'b': return `**${children}**`;
-              case 'em':
-              case 'i': return `*${children}*`;
-              case 'br': return '\n';
-              case 'table': return `${children}\n`;
-              case 'tr': return `|${children}\n`;
-              case 'td':
-              case 'th': return ` ${children} |`;
-              default: return children;
-            }
-          }
-          return '';
-        };
-
-        text = processNode(tempDiv);
-        setUploadedContent(text.trim());
-
-      // Handle plain text files (MD, TXT)
-      } else if (fileExtension === 'md' || fileExtension === 'txt') {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          setUploadedContent(event.target.result);
-          setUploadingFile(false);
-        };
-        reader.onerror = () => {
-          setError('שגיאה בקריאת הקובץ');
-          setUploadingFile(false);
-        };
-        reader.readAsText(file);
-        return; // Don't set uploadingFile to false here, reader will do it
-
+      if (response.data.success) {
+        setUploadedContent(response.data.content);
+        setUploadProgress(100);
       } else {
-        setError(`סוג קובץ לא נתמך: .${fileExtension}. השתמש ב-MD, TXT או DOCX`);
+        setError('שגיאה בעיבוד הקובץ');
       }
     } catch (err) {
-      console.error('Error reading file:', err);
-      setError('שגיאה בקריאת הקובץ. נסה קובץ אחר.');
+      console.error('Error uploading file:', err);
+      setError(err.response?.data?.message || 'שגיאה בהעלאת הקובץ. נסה שוב.');
     } finally {
       setUploadingFile(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -298,23 +251,41 @@ function TemplateLearningPage() {
               {/* File Upload */}
               <div
                 onClick={() => !uploadingFile && fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
                   uploadingFile
                     ? 'border-violet-400 bg-violet-50 cursor-wait'
                     : 'border-gray-300 cursor-pointer hover:border-violet-400 hover:bg-violet-50'
                 }`}
               >
                 {uploadingFile ? (
-                  <>
-                    <Loader2 className="w-10 h-10 text-violet-500 mx-auto mb-3 animate-spin" />
-                    <p className="text-violet-600 font-medium">מעבד את הקובץ...</p>
-                    <p className="text-sm text-violet-400">ממיר מסמך Word לטקסט</p>
-                  </>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <File className="w-6 h-6 text-violet-500" />
+                      <span className="text-violet-600 font-medium text-sm truncate max-w-[200px]">
+                        {uploadedFileName}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-violet-500 to-purple-500 h-3 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />
+                      <span className="text-violet-600 text-sm">
+                        {uploadProgress < 100 ? `מעלה... ${uploadProgress}%` : 'מעבד את הקובץ...'}
+                      </span>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-600 font-medium">לחץ להעלאת קובץ</p>
-                    <p className="text-sm text-gray-400">או גרור לכאן קובץ MD, TXT, DOCX</p>
+                    <p className="text-sm text-gray-400">MD, TXT, DOCX (עד 10MB)</p>
                   </>
                 )}
                 <input
