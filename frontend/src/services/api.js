@@ -50,6 +50,16 @@ export const architectureApi = {
   generateC4Model: (data) => api.post('/architecture/c4-model', data)
 };
 
+// Templates API - Document Learning
+export const templatesApi = {
+  analyze: (data) => api.post('/templates/analyze', data),
+  getAll: () => api.get('/templates'),
+  getById: (id) => api.get(`/templates/${id}`),
+  generateFromTemplate: (id, data) => api.post(`/templates/${id}/generate`, data),
+  compare: (id, data) => api.post(`/templates/${id}/compare`, data),
+  delete: (id) => api.delete(`/templates/${id}`)
+};
+
 // Health check
 export const healthCheck = () => api.get('/health');
 

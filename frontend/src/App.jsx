@@ -7,6 +7,7 @@ import AgilePage from './pages/AgilePage';
 import DesignPage from './pages/DesignPage';
 import ArchitecturePage from './pages/ArchitecturePage';
 import ProjectsPage from './pages/ProjectsPage';
+import TemplateLearningPage from './pages/TemplateLearningPage';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/templates" element={<TemplateLearningPage />} />
         <Route path="/specification" element={<SpecificationPage />} />
         <Route path="/agile" element={<AgilePage />} />
         <Route path="/design" element={<DesignPage />} />

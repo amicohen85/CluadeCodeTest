@@ -9,12 +9,14 @@ import {
   FolderOpen,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
 
 const navigation = [
   { name: 'דשבורד', href: '/', icon: LayoutDashboard },
   { name: 'פרויקטים', href: '/projects', icon: FolderOpen },
+  { name: 'למידה מתבניות', href: '/templates', icon: BookOpen },
   { name: 'מסמכי אפיון', href: '/specification', icon: FileText },
   { name: 'משימות AGILE', href: '/agile', icon: ListTodo },
   { name: 'עיצוב מסכים', href: '/design', icon: Palette },

@@ -9,6 +9,7 @@ import specificationRoutes from './routes/specificationRoutes.js';
 import agileRoutes from './routes/agileRoutes.js';
 import designRoutes from './routes/designRoutes.js';
 import architectureRoutes from './routes/architectureRoutes.js';
+import templateRoutes from './routes/templateRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/specifications', specificationRoutes);
 app.use('/api/agile', agileRoutes);
 app.use('/api/design', designRoutes);
 app.use('/api/architecture', architectureRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
