@@ -12,7 +12,188 @@ export class DocumentLearningAgent extends BaseAgent {
     });
   }
 
+  /**
+   * Local analysis without AI - analyzes document structure using regex patterns
+   */
+  analyzeDocumentLocally(content) {
+    const lines = content.split('\n');
+    const chapters = [];
+    const patterns = {
+      requirementFormat: '',
+      numberingStyle: '',
+      tableUsage: [],
+      diagramTypes: []
+    };
+
+    let currentChapter = null;
+    let tableCount = 0;
+    let listCount = 0;
+    let hasNumberedHeadings = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Detect markdown headings
+      const mdHeadingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (mdHeadingMatch) {
+        const level = mdHeadingMatch[1].length;
+        const title = mdHeadingMatch[2];
+        if (level <= 2) {
+          currentChapter = {
+            number: String(chapters.length + 1),
+            title: title,
+            purpose: `פרק ${title}`,
+            requiredContent: [],
+            format: 'prose',
+            estimatedLength: 'medium',
+            subSections: []
+          };
+          chapters.push(currentChapter);
+        } else if (currentChapter) {
+          currentChapter.subSections.push({
+            title: title,
+            level: level
+          });
+        }
+        continue;
+      }
+
+      // Detect numbered headings (1. Title, 1.1 Title, etc.)
+      const numberedMatch = line.match(/^(\d+(?:\.\d+)*)[.\s]+(.+)$/);
+      if (numberedMatch && numberedMatch[2].length < 100) {
+        hasNumberedHeadings = true;
+        const num = numberedMatch[1];
+        const title = numberedMatch[2];
+        const depth = num.split('.').length;
+
+        if (depth === 1) {
+          currentChapter = {
+            number: num,
+            title: title,
+            purpose: `פרק ${num}: ${title}`,
+            requiredContent: [],
+            format: 'prose',
+            estimatedLength: 'medium',
+            subSections: []
+          };
+          chapters.push(currentChapter);
+        } else if (currentChapter) {
+          currentChapter.subSections.push({
+            number: num,
+            title: title,
+            level: depth
+          });
+        }
+        continue;
+      }
+
+      // Detect tables
+      if (line.includes('|') && line.split('|').length >= 3) {
+        tableCount++;
+        if (currentChapter) {
+          currentChapter.format = 'table';
+          if (!patterns.tableUsage.includes(currentChapter.title)) {
+            patterns.tableUsage.push(currentChapter.title);
+          }
+        }
+      }
+
+      // Detect lists
+      if (line.match(/^[-*•]\s+/) || line.match(/^\d+[.)]\s+/)) {
+        listCount++;
+        if (currentChapter && currentChapter.format === 'prose') {
+          currentChapter.format = 'list';
+        }
+      }
+
+      // Detect requirement IDs
+      const reqMatch = line.match(/\b(REQ|FR|NFR|BR|SR|UC)-?\d+/i);
+      if (reqMatch && !patterns.requirementFormat) {
+        patterns.requirementFormat = reqMatch[0].replace(/\d+/, 'XXX');
+      }
+    }
+
+    patterns.numberingStyle = hasNumberedHeadings ? '1, 1.1, 1.1.1' : 'כותרות Markdown';
+
+    // Detect language
+    const hebrewChars = (content.match(/[\u0590-\u05FF]/g) || []).length;
+    const englishChars = (content.match(/[a-zA-Z]/g) || []).length;
+    const language = hebrewChars > englishChars ? 'hebrew' : 'english';
+
+    // Build analysis result
+    const analysis = {
+      documentType: 'specification',
+      structure: { chapters },
+      patterns,
+      style: {
+        language,
+        tone: 'formal',
+        detailLevel: chapters.length > 5 ? 'high' : 'medium'
+      },
+      stats: {
+        totalChapters: chapters.length,
+        totalSubSections: chapters.reduce((sum, ch) => sum + ch.subSections.length, 0),
+        tableCount,
+        listCount,
+        wordCount: content.split(/\s+/).length
+      }
+    };
+
+    return analysis;
+  }
+
+  /**
+   * Format local analysis as readable markdown
+   */
+  formatLocalAnalysis(analysis) {
+    let md = `# ניתוח מבנה המסמך\n\n`;
+    md += `## סטטיסטיקות\n`;
+    md += `| מדד | ערך |\n|-----|-----|\n`;
+    md += `| פרקים ראשיים | ${analysis.stats.totalChapters} |\n`;
+    md += `| תתי-סעיפים | ${analysis.stats.totalSubSections} |\n`;
+    md += `| טבלאות | ${analysis.stats.tableCount} |\n`;
+    md += `| רשימות | ${analysis.stats.listCount} |\n`;
+    md += `| מילים | ${analysis.stats.wordCount} |\n\n`;
+
+    md += `## מבנה הפרקים שזוהה\n\n`;
+
+    for (const chapter of analysis.structure.chapters) {
+      md += `### 📋 פרק ${chapter.number}: ${chapter.title}\n`;
+      md += `- **פורמט:** ${chapter.format === 'table' ? 'טבלה' : chapter.format === 'list' ? 'רשימה' : 'טקסט'}\n`;
+
+      if (chapter.subSections.length > 0) {
+        md += `- **תתי-סעיפים:**\n`;
+        for (const sub of chapter.subSections) {
+          md += `  - ${sub.number || ''} ${sub.title}\n`;
+        }
+      }
+      md += `\n`;
+    }
+
+    md += `## סגנון המסמך\n`;
+    md += `| מאפיין | ערך |\n|--------|-----|\n`;
+    md += `| שפה | ${analysis.style.language === 'hebrew' ? 'עברית' : 'אנגלית'} |\n`;
+    md += `| מספור | ${analysis.patterns.numberingStyle} |\n`;
+    md += `| רמת פירוט | ${analysis.style.detailLevel === 'high' ? 'גבוהה' : 'בינונית'} |\n`;
+
+    if (analysis.patterns.requirementFormat) {
+      md += `| פורמט דרישות | ${analysis.patterns.requirementFormat} |\n`;
+    }
+
+    md += `\n---\n\n`;
+    md += `> ✅ **ניתוח מקומי** - לא נדרש API Key\n`;
+
+    return md;
+  }
+
   getDemoResponse(userMessage, context = {}) {
+    // If we have actual content, do local analysis
+    if (context.documentContent) {
+      const analysis = this.analyzeDocumentLocally(context.documentContent);
+      return this.formatLocalAnalysis(analysis);
+    }
+
     return `# ניתוח מסמך לדוגמה - דמו
 
 ## סיכום המסמך שהועלה
@@ -184,7 +365,7 @@ Output as JSON:
 }
 \`\`\``;
 
-    const result = await this.process(prompt);
+    const result = await this.process(prompt, { documentContent });
 
     return {
       ...result,
