@@ -298,20 +298,6 @@ function TemplateLearningPage() {
                 />
               </div>
 
-              <div className="text-center text-gray-400 text-sm">- או -</div>
-
-              {/* Paste Content */}
-              <div>
-                <label className="form-label">הדבק תוכן מסמך</label>
-                <textarea
-                  className="form-textarea font-mono text-sm"
-                  rows={10}
-                  placeholder="הדבק כאן את תוכן המסמך לדוגמה..."
-                  value={uploadedContent}
-                  onChange={(e) => setUploadedContent(e.target.value)}
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">שם התבנית</label>
