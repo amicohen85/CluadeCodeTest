@@ -13,7 +13,7 @@ export class DocumentLearningAgent extends BaseAgent {
   }
 
   /**
-   * Local analysis without AI - analyzes document structure using regex patterns
+   * Local analysis without AI - analyzes document structure AND extracts content
    */
   analyzeDocumentLocally(content) {
     const lines = content.split('\n');
@@ -26,20 +26,31 @@ export class DocumentLearningAgent extends BaseAgent {
     };
 
     let currentChapter = null;
+    let currentSubSection = null;
     let tableCount = 0;
     let listCount = 0;
     let hasNumberedHeadings = false;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      if (!trimmedLine) {
+        // Add empty line to content if we have a current section
+        if (currentSubSection && currentSubSection.content) {
+          currentSubSection.content += '\n';
+        } else if (currentChapter && currentChapter.content) {
+          currentChapter.content += '\n';
+        }
+        continue;
+      }
 
       // Detect markdown headings
-      const mdHeadingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      const mdHeadingMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
       if (mdHeadingMatch) {
         const level = mdHeadingMatch[1].length;
         const title = mdHeadingMatch[2];
         if (level <= 2) {
+          currentSubSection = null;
           currentChapter = {
             number: String(chapters.length + 1),
             title: title,
@@ -47,20 +58,23 @@ export class DocumentLearningAgent extends BaseAgent {
             requiredContent: [],
             format: 'prose',
             estimatedLength: 'medium',
-            subSections: []
+            subSections: [],
+            content: ''
           };
           chapters.push(currentChapter);
         } else if (currentChapter) {
-          currentChapter.subSections.push({
+          currentSubSection = {
             title: title,
-            level: level
-          });
+            level: level,
+            content: ''
+          };
+          currentChapter.subSections.push(currentSubSection);
         }
         continue;
       }
 
       // Detect numbered headings (1. Title, 1.1 Title, etc.)
-      const numberedMatch = line.match(/^(\d+(?:\.\d+)*)[.\s]+(.+)$/);
+      const numberedMatch = trimmedLine.match(/^(\d+(?:\.\d+)*)[.\s]+(.+)$/);
       if (numberedMatch && numberedMatch[2].length < 100) {
         hasNumberedHeadings = true;
         const num = numberedMatch[1];
@@ -68,6 +82,7 @@ export class DocumentLearningAgent extends BaseAgent {
         const depth = num.split('.').length;
 
         if (depth === 1) {
+          currentSubSection = null;
           currentChapter = {
             number: num,
             title: title,
@@ -75,21 +90,31 @@ export class DocumentLearningAgent extends BaseAgent {
             requiredContent: [],
             format: 'prose',
             estimatedLength: 'medium',
-            subSections: []
+            subSections: [],
+            content: ''
           };
           chapters.push(currentChapter);
         } else if (currentChapter) {
-          currentChapter.subSections.push({
+          currentSubSection = {
             number: num,
             title: title,
-            level: depth
-          });
+            level: depth,
+            content: ''
+          };
+          currentChapter.subSections.push(currentSubSection);
         }
         continue;
       }
 
+      // Add content to current section
+      if (currentSubSection) {
+        currentSubSection.content += trimmedLine + '\n';
+      } else if (currentChapter) {
+        currentChapter.content += trimmedLine + '\n';
+      }
+
       // Detect tables
-      if (line.includes('|') && line.split('|').length >= 3) {
+      if (trimmedLine.includes('|') && trimmedLine.split('|').length >= 3) {
         tableCount++;
         if (currentChapter) {
           currentChapter.format = 'table';
@@ -100,7 +125,7 @@ export class DocumentLearningAgent extends BaseAgent {
       }
 
       // Detect lists
-      if (line.match(/^[-*•]\s+/) || line.match(/^\d+[.)]\s+/)) {
+      if (trimmedLine.match(/^[-*•]\s+/) || trimmedLine.match(/^\d+[.)]\s+/)) {
         listCount++;
         if (currentChapter && currentChapter.format === 'prose') {
           currentChapter.format = 'list';
@@ -108,10 +133,21 @@ export class DocumentLearningAgent extends BaseAgent {
       }
 
       // Detect requirement IDs
-      const reqMatch = line.match(/\b(REQ|FR|NFR|BR|SR|UC)-?\d+/i);
+      const reqMatch = trimmedLine.match(/\b(REQ|FR|NFR|BR|SR|UC)-?\d+/i);
       if (reqMatch && !patterns.requirementFormat) {
         patterns.requirementFormat = reqMatch[0].replace(/\d+/, 'XXX');
       }
+    }
+
+    // If no chapters were detected, create one with all content
+    if (chapters.length === 0) {
+      chapters.push({
+        number: '1',
+        title: 'תוכן המסמך',
+        content: content,
+        format: 'prose',
+        subSections: []
+      });
     }
 
     patterns.numberingStyle = hasNumberedHeadings ? '1, 1.1, 1.1.1' : 'כותרות Markdown';
@@ -137,52 +173,62 @@ export class DocumentLearningAgent extends BaseAgent {
         tableCount,
         listCount,
         wordCount: content.split(/\s+/).length
-      }
+      },
+      originalContent: content
     };
 
     return analysis;
   }
 
   /**
-   * Format local analysis as readable markdown
+   * Format local analysis as readable markdown - shows FULL content organized by sections
    */
   formatLocalAnalysis(analysis) {
-    let md = `# ניתוח מבנה המסמך\n\n`;
-    md += `## סטטיסטיקות\n`;
-    md += `| מדד | ערך |\n|-----|-----|\n`;
-    md += `| פרקים ראשיים | ${analysis.stats.totalChapters} |\n`;
-    md += `| תתי-סעיפים | ${analysis.stats.totalSubSections} |\n`;
-    md += `| טבלאות | ${analysis.stats.tableCount} |\n`;
-    md += `| רשימות | ${analysis.stats.listCount} |\n`;
-    md += `| מילים | ${analysis.stats.wordCount} |\n\n`;
+    let md = `# 📄 תוכן האפיון המאורגן\n\n`;
 
-    md += `## מבנה הפרקים שזוהה\n\n`;
+    // Summary box
+    md += `> **סיכום:** ${analysis.stats.totalChapters} פרקים | ${analysis.stats.totalSubSections} תתי-סעיפים | ${analysis.stats.wordCount} מילים\n\n`;
+    md += `---\n\n`;
 
+    // Display each chapter with its FULL content
     for (const chapter of analysis.structure.chapters) {
-      md += `### 📋 פרק ${chapter.number}: ${chapter.title}\n`;
-      md += `- **פורמט:** ${chapter.format === 'table' ? 'טבלה' : chapter.format === 'list' ? 'רשימה' : 'טקסט'}\n`;
+      // Chapter header
+      md += `## 📋 ${chapter.number}. ${chapter.title}\n\n`;
 
-      if (chapter.subSections.length > 0) {
-        md += `- **תתי-סעיפים:**\n`;
+      // Chapter content
+      if (chapter.content && chapter.content.trim()) {
+        md += chapter.content.trim() + '\n\n';
+      }
+
+      // Sub-sections with their content
+      if (chapter.subSections && chapter.subSections.length > 0) {
         for (const sub of chapter.subSections) {
-          md += `  - ${sub.number || ''} ${sub.title}\n`;
+          const subNumber = sub.number || '';
+          md += `### ${subNumber} ${sub.title}\n\n`;
+
+          if (sub.content && sub.content.trim()) {
+            md += sub.content.trim() + '\n\n';
+          }
         }
       }
-      md += `\n`;
+
+      md += `---\n\n`;
     }
 
-    md += `## סגנון המסמך\n`;
+    // Footer with stats
+    md += `\n## 📊 סיכום מבנה המסמך\n\n`;
     md += `| מאפיין | ערך |\n|--------|-----|\n`;
     md += `| שפה | ${analysis.style.language === 'hebrew' ? 'עברית' : 'אנגלית'} |\n`;
-    md += `| מספור | ${analysis.patterns.numberingStyle} |\n`;
+    md += `| סגנון מספור | ${analysis.patterns.numberingStyle} |\n`;
     md += `| רמת פירוט | ${analysis.style.detailLevel === 'high' ? 'גבוהה' : 'בינונית'} |\n`;
+    md += `| פרקים | ${analysis.stats.totalChapters} |\n`;
+    md += `| תתי-סעיפים | ${analysis.stats.totalSubSections} |\n`;
 
     if (analysis.patterns.requirementFormat) {
       md += `| פורמט דרישות | ${analysis.patterns.requirementFormat} |\n`;
     }
 
-    md += `\n---\n\n`;
-    md += `> ✅ **ניתוח מקומי** - לא נדרש API Key\n`;
+    md += `\n> ✅ **ניתוח מקומי** - התבנית נשמרה וניתן ליצור מסמכים חדשים על בסיסה\n`;
 
     return md;
   }
