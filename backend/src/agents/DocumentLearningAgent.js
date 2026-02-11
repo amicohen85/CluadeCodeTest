@@ -13,7 +13,44 @@ export class DocumentLearningAgent extends BaseAgent {
   }
 
   /**
+   * Check if a line looks like a heading (for DOCX documents without clear markdown)
+   */
+  isLikelyHeading(line, nextLine = '') {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.length > 100) return { isHeading: false };
+
+    // Hebrew heading keywords
+    const hebrewHeadingPatterns = [
+      /^(פרק|סעיף|נספח|תקציר|מבוא|רקע|מטרות|היקף|דרישות|ארכיטקטורה|עיצוב|בדיקות|סיכום|הגדרות|מונחים|תוכן עניינים|הקדמה|סקירה|ניתוח|תכנון|יישום|תחזוקה|אבטחה|ביצועים|ממשקים|נתונים|תהליכים|משתמשים|הרשאות|גיבוי|שחזור)/i,
+      /^(functional|non-functional|requirements|architecture|design|testing|summary|introduction|scope|objectives|background|overview|analysis|implementation|security|performance|interfaces|data|processes|users)/i
+    ];
+
+    // Check Hebrew heading patterns
+    for (const pattern of hebrewHeadingPatterns) {
+      if (pattern.test(trimmed)) {
+        return { isHeading: true, level: 1, title: trimmed };
+      }
+    }
+
+    // Check if line ends with colon (common heading pattern in Hebrew docs)
+    if (trimmed.endsWith(':') && trimmed.length < 60) {
+      return { isHeading: true, level: 2, title: trimmed.slice(0, -1) };
+    }
+
+    // Short line followed by longer line (potential heading)
+    if (trimmed.length < 50 && nextLine && nextLine.trim().length > trimmed.length * 2) {
+      // Check it's not a list item
+      if (!trimmed.match(/^[-*•\d.)\]]/)) {
+        return { isHeading: true, level: 2, title: trimmed };
+      }
+    }
+
+    return { isHeading: false };
+  }
+
+  /**
    * Local analysis without AI - analyzes document structure AND extracts content
+   * Enhanced to detect headings in DOCX documents
    */
   analyzeDocumentLocally(content) {
     const lines = content.split('\n');
@@ -30,16 +67,21 @@ export class DocumentLearningAgent extends BaseAgent {
     let tableCount = 0;
     let listCount = 0;
     let hasNumberedHeadings = false;
+    let contentBeforeFirstChapter = '';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmedLine = line.trim();
+      const nextLine = lines[i + 1] || '';
+
       if (!trimmedLine) {
         // Add empty line to content if we have a current section
         if (currentSubSection && currentSubSection.content) {
           currentSubSection.content += '\n';
         } else if (currentChapter && currentChapter.content) {
           currentChapter.content += '\n';
+        } else if (!currentChapter) {
+          contentBeforeFirstChapter += '\n';
         }
         continue;
       }
@@ -106,11 +148,40 @@ export class DocumentLearningAgent extends BaseAgent {
         continue;
       }
 
+      // Check for likely headings (DOCX pattern detection)
+      const headingCheck = this.isLikelyHeading(trimmedLine, nextLine);
+      if (headingCheck.isHeading) {
+        if (headingCheck.level === 1) {
+          currentSubSection = null;
+          currentChapter = {
+            number: String(chapters.length + 1),
+            title: headingCheck.title,
+            purpose: headingCheck.title,
+            requiredContent: [],
+            format: 'prose',
+            estimatedLength: 'medium',
+            subSections: [],
+            content: ''
+          };
+          chapters.push(currentChapter);
+        } else if (currentChapter) {
+          currentSubSection = {
+            title: headingCheck.title,
+            level: headingCheck.level,
+            content: ''
+          };
+          currentChapter.subSections.push(currentSubSection);
+        }
+        continue;
+      }
+
       // Add content to current section
       if (currentSubSection) {
         currentSubSection.content += trimmedLine + '\n';
       } else if (currentChapter) {
         currentChapter.content += trimmedLine + '\n';
+      } else {
+        contentBeforeFirstChapter += trimmedLine + '\n';
       }
 
       // Detect tables
@@ -139,6 +210,17 @@ export class DocumentLearningAgent extends BaseAgent {
       }
     }
 
+    // If content exists before first chapter, add it as intro
+    if (contentBeforeFirstChapter.trim() && chapters.length > 0) {
+      chapters.unshift({
+        number: '0',
+        title: 'פתיח / מידע כללי',
+        content: contentBeforeFirstChapter.trim(),
+        format: 'prose',
+        subSections: []
+      });
+    }
+
     // If no chapters were detected, create one with all content
     if (chapters.length === 0) {
       chapters.push({
@@ -150,7 +232,7 @@ export class DocumentLearningAgent extends BaseAgent {
       });
     }
 
-    patterns.numberingStyle = hasNumberedHeadings ? '1, 1.1, 1.1.1' : 'כותרות Markdown';
+    patterns.numberingStyle = hasNumberedHeadings ? '1, 1.1, 1.1.1' : 'זיהוי אוטומטי';
 
     // Detect language
     const hebrewChars = (content.match(/[\u0590-\u05FF]/g) || []).length;
@@ -169,7 +251,7 @@ export class DocumentLearningAgent extends BaseAgent {
       },
       stats: {
         totalChapters: chapters.length,
-        totalSubSections: chapters.reduce((sum, ch) => sum + ch.subSections.length, 0),
+        totalSubSections: chapters.reduce((sum, ch) => sum + (ch.subSections?.length || 0), 0),
         tableCount,
         listCount,
         wordCount: content.split(/\s+/).length
@@ -227,8 +309,6 @@ export class DocumentLearningAgent extends BaseAgent {
     if (analysis.patterns.requirementFormat) {
       md += `| פורמט דרישות | ${analysis.patterns.requirementFormat} |\n`;
     }
-
-    md += `\n> ✅ **ניתוח מקומי** - התבנית נשמרה וניתן ליצור מסמכים חדשים על בסיסה\n`;
 
     return md;
   }
